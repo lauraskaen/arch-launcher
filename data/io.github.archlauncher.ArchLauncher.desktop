@@ -1,0 +1,20 @@
+[Desktop Entry]
+Type=Application
+Name=Arch Launcher
+GenericName=Application Launcher
+GenericName[pt_BR]=Lançador de aplicativos
+Comment=Search and launch applications; hide the ones you don't use
+Comment[pt_BR]=Pesquise e abra aplicativos; oculte os que você não usa
+Exec=arch-launcher
+Icon=io.github.archlauncher.ArchLauncher
+Terminal=false
+Categories=Utility;GTK;
+Keywords=launcher;run;search;rofi;wofi;menu;
+Keywords[pt_BR]=lançador;executar;pesquisar;rofi;wofi;menu;
+StartupNotify=false
+Actions=hidden-apps;
+
+[Desktop Action hidden-apps]
+Name=Hidden applications
+Name[pt_BR]=Aplicativos ocultos
+Exec=arch-launcher --hidden-apps

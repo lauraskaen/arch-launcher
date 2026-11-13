@@ -1,0 +1,28 @@
+/* ~/.config/arch-launcher/style.css — loaded after the generated theme, so
+ * anything here wins. Main selectors:
+ *   window.arch-launcher      the window (transparent)
+ *   .launcher-card            the rounded card holding everything
+ *   .search-entry             search fields
+ *   .app-rows > row           result rows (row:selected = highlighted one)
+ *   .app-icon .app-name .app-desc .app-id .badge
+ *   .banner .banner.error     inline notifications
+ *   .footer .dim              status line
+ * GTK CSS reference: https://docs.gtk.org/gtk4/css-properties.html
+ */
+
+/* Bigger, bolder app names */
+.app-name {
+  font-weight: 700;
+  font-size: 1.05em;
+}
+
+/* Gradient border on the card */
+.launcher-card {
+  border: 2px solid alpha(#89b4fa, 0.6);
+}
+
+/* Softer selection with a left accent bar */
+.app-rows > row:selected {
+  background-color: alpha(#89b4fa, 0.18);
+  box-shadow: inset 3px 0 0 #89b4fa;
+}

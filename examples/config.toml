@@ -1,0 +1,58 @@
+# Configuração do arch-launcher
+# Todas as chaves são opcionais: remova qualquer uma para usar o padrão.
+# Depois de editar, use o menu ⚙ → "Recarregar configuração".
+# CSS extra (opcional): ~/.config/arch-launcher/style.css
+
+[appearance]
+# "dark", "light" ou "system" (segue o tema do GTK; se não der para saber, escuro)
+theme = "dark"
+font_family = "sans-serif"
+# Tamanho da fonte em pontos
+font_size = 11.0
+# Sobrescreva cores com qualquer valor aceito pelo GTK (#rrggbb, rgba(...), nomes):
+# background = "#1e1e2e"
+# foreground = "#cdd6f4"
+# accent = "#cba6f7"
+# selection = "rgba(203, 166, 247, 0.22)"
+# border_color = "#45475a"
+# Opacidade do fundo do cartão (0.0 a 1.0)
+opacity = 0.94
+# Valores em pixels
+border_radius = 16
+border_width = 1
+padding = 12
+# Tamanho dos ícones (16 a 128)
+icon_size = 32
+show_descriptions = true
+# Transições suaves
+animations = true
+
+[window]
+width = 640
+height = 480
+# "center" ou "top"
+anchor = "center"
+# Distância do topo quando anchor = "top"
+margin_top = 200
+# Usar wlr-layer-shell no Wayland quando disponível
+layer_shell = true
+# Fechar quando a janela perde o foco
+close_on_focus_loss = true
+
+[behavior]
+max_results = 50
+# Ordenar por frequência/recência de uso
+sort_by_usage = true
+search_keywords = true
+search_descriptions = true
+
+[keybindings]
+# Cada ação aceita uma lista de atalhos no formato de aceleradores do GTK.
+launch = ["Return", "KP_Enter"]
+close = ["Escape"]
+next = ["Down", "<Control>n", "<Control>j"]
+previous = ["Up", "<Control>p", "<Control>k"]
+hide_selected = ["<Control><Shift>x"]
+hidden_manager = ["<Control><Shift>h"]
+clear_search = ["<Control>BackSpace"]
+context_menu = ["Menu", "<Shift>F10"]
