@@ -246,31 +246,6 @@ A arquitetura e os contratos entre módulos estão em [ARCHITECTURE.md](ARCHITEC
   `ARCH_LAUNCHER_DEBUG_SNAPSHOT=/tmp/l.png ARCH_LAUNCHER_DEBUG_QUERY=fire arch-launcher`
   renderiza a janela em PNG pelo próprio GTK e encerra.
 
-## Estado da validação
-
-Validado nesta máquina (Arch Linux, KDE Plasma 6 Wayland, GTK 4.24, Rust 1.99):
-
-* 54 testes automatizados (descoberta XDG, precedência e máscara, parser, gravação atômica,
-  **ocultação e persistência**, busca, configuração, histórico de uso), sem avisos do clippy;
-* descoberta dos apps reais do sistema (17 apps em ~25 ms, build debug);
-* GUI em Wayland (superfície layer-shell confirmada no KWin) e em X11 (XWayland, `GDK_BACKEND=x11`),
-  verificada por renderização da janela: lista, ícones, busca, página de ocultos;
-* app oculto não aparece pesquisando o nome exato; reexibir o traz de volta na hora;
-* instância única: segunda execução alterna a janela; modo `--daemon`; ação `quit` via D-Bus;
-* segurança da execução: um `Exec=` com `;`, `$(…)` e aspas é passado literalmente ao programa,
-  sem shell (nenhum comando injetado executado), e `%U` é expandido corretamente;
-* `make install`/`make uninstall` com `DESTDIR`.
-
-Não validado aqui:
-
-* cliques e teclas reais de uma pessoa (clique direito, digitação); esses fluxos foram
-  exercitados chamando os mesmos manipuladores de teclado e ações dentro do processo;
-* apps Flatpak (não há nenhum instalado nesta máquina). Eles usam o mesmo caminho do GIO
-  com `Exec=flatpak run …`, e a descoberta via symlinks de `exports/` tem teste automatizado;
-* Hyprland, Sway e GNOME (só o KDE Plasma foi testado de fato);
-* reinício real da sessão (equivale a um processo novo lendo `hidden-apps.toml`, o que é testado);
-* HiDPI com escala fracionária.
-
 ## Licença
 
 MIT. Veja [LICENSE](LICENSE).
