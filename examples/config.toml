@@ -4,7 +4,8 @@
 # CSS extra (opcional): ~/.config/arch-launcher/style.css
 
 [appearance]
-# "dark", "light" ou "system" (segue o tema do GTK; se não der para saber, escuro)
+# "dark", "light", "system" (segue o tema do GTK; se não der para saber, escuro)
+# ou "gtk" (usa as cores do tema GTK / ~/.config/gtk-4.0/gtk.css, como as do matugen/DMS)
 theme = "dark"
 font_family = "sans-serif"
 # Tamanho da fonte em pontos

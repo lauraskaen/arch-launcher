@@ -176,10 +176,29 @@ A referência completa, com os padrões, está em [examples/config.toml](example
 
 | Seção | Opções |
 |---|---|
-| `[appearance]` | `theme` (`dark`/`light`/`system`), `font_family`, `font_size`, `background`, `foreground`, `accent`, `selection`, `border_color`, `opacity`, `border_radius`, `border_width`, `padding`, `icon_size`, `show_descriptions`, `animations` |
+| `[appearance]` | `theme` (`dark`/`light`/`system`/`gtk`), `font_family`, `font_size`, `background`, `foreground`, `accent`, `selection`, `border_color`, `opacity`, `border_radius`, `border_width`, `padding`, `icon_size`, `show_descriptions`, `animations` |
 | `[window]` | `width`, `height`, `anchor` (`center`/`top`), `margin_top`, `layer_shell`, `close_on_focus_loss` |
 | `[behavior]` | `max_results`, `sort_by_usage`, `search_keywords`, `search_descriptions` |
 | `[keybindings]` | `launch`, `close`, `next`, `previous`, `hide_selected`, `hidden_manager`, `clear_search`, `context_menu` (listas de aceleradores GTK, ex.: `"<Control><Shift>x"`) |
+
+### Cores do tema GTK (matugen / DankMaterialShell)
+
+Com `theme = "gtk"`, o launcher usa as cores nomeadas do GTK (`@window_bg_color`,
+`@window_fg_color`, `@card_bg_color`, `@popover_bg_color`, `@accent_bg_color`,
+`@accent_fg_color`, `@destructive_bg_color`) em vez da paleta própria. Assim ele segue
+o que as definir: o tema GTK ou `~/.config/gtk-4.0/gtk.css` — que é onde o matugen e o
+DankMaterialShell gravam as cores do papel de parede (`dank-colors.css`).
+
+```toml
+[appearance]
+theme = "gtk"
+```
+
+* Cores que o sistema não definir usam a paleta padrão do launcher.
+* `background`, `foreground`, `accent`, `selection` e `border_color` no `config.toml`
+  continuam tendo prioridade sobre as cores do GTK.
+* Ao trocar o papel de parede, a próxima abertura do launcher já usa as novas cores. Com
+  `--daemon`, use ⚙ → *Recarregar configuração* ou reinicie o processo.
 
 ### CSS próprio
 
