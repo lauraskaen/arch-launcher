@@ -19,6 +19,10 @@ pub enum ThemeMode {
     Dark,
     Light,
     System,
+    /// Like `System`, but the colours come from the GTK theme's named colours
+    /// (`@window_bg_color`, `@accent_bg_color`, …), e.g. those that
+    /// matugen / DankMaterialShell write to `~/.config/gtk-4.0/gtk.css`.
+    Gtk,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -393,7 +397,8 @@ pub fn default_config_toml() -> String {
 # CSS extra (opcional): ~/.config/arch-launcher/style.css
 
 [appearance]
-# "dark", "light" ou "system" (segue o tema do GTK; se não der para saber, escuro)
+# "dark", "light", "system" (segue o tema do GTK; se não der para saber, escuro)
+# ou "gtk" (usa as cores do tema GTK / ~/.config/gtk-4.0/gtk.css, como as do matugen/DMS)
 theme = "dark"
 font_family = "sans-serif"
 # Tamanho da fonte em pontos

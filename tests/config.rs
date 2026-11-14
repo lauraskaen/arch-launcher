@@ -93,3 +93,10 @@ fn load_from_missing_file_is_default() {
     assert_eq!(cfg, Config::default());
     assert!(w.is_empty());
 }
+
+#[test]
+fn gtk_theme_mode_parses() {
+    let (cfg, w) = Config::from_toml_str("[appearance]\ntheme = \"gtk\"\n");
+    assert!(w.is_empty(), "{w:?}");
+    assert_eq!(cfg.appearance.theme, ThemeMode::Gtk);
+}

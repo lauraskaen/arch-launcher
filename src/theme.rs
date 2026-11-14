@@ -7,6 +7,13 @@
 //!   Calling it again replaces both providers (live reload).
 //!
 //! The default look is a Catppuccin-like palette: Mocha (dark) and Latte (light).
+//!
+//! With `theme = "gtk"` the stylesheet references the GTK named colours
+//! (`@window_bg_color`, `@accent_bg_color`, …) instead, so it follows whatever
+//! defines them: the GTK theme, or `~/.config/gtk-4.0/gtk.css` as written by
+//! matugen / DankMaterialShell. [`fallback_css`] defines the same names at
+//! `STYLE_PROVIDER_PRIORITY_FALLBACK`, so any of them the system leaves
+//! undefined still resolves to the built-in palette.
 
 use std::cell::RefCell;
 
@@ -50,6 +57,67 @@ impl Color {
             (self.a * alpha).clamp(0.0, 1.0)
         )
     }
+}
+
+/// A colour in the generated CSS: a literal value, or a GTK named colour
+/// (`@name`) with an alpha factor.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Paint {
+    Rgba(Color),
+    Named(&'static str, f32),
+}
+
+impl Paint {
+    /// CSS value with the alpha multiplied by `alpha`.
+    fn css(self, alpha: f32) -> String {
+        match self {
+            Paint::Rgba(c) => c.css(alpha),
+            Paint::Named(name, base) => {
+                let a = (base * alpha).clamp(0.0, 1.0);
+                if (a - 1.0).abs() < 0.0005 {
+                    format!("@{name}")
+                } else {
+                    format!("alpha(@{name}, {a:.3})")
+                }
+            }
+        }
+    }
+
+    /// The same colour with its own alpha replaced by `alpha`.
+    fn with_alpha(self, alpha: f32) -> Self {
+        match self {
+            Paint::Rgba(c) => Paint::Rgba(Color { a: alpha, ..c }),
+            Paint::Named(name, _) => Paint::Named(name, alpha),
+        }
+    }
+}
+
+/// GTK named colours used by `theme = "gtk"`.
+const GTK_WINDOW_BG: &str = "window_bg_color";
+const GTK_WINDOW_FG: &str = "window_fg_color";
+const GTK_CARD_BG: &str = "card_bg_color";
+const GTK_POPOVER_BG: &str = "popover_bg_color";
+const GTK_ACCENT_BG: &str = "accent_bg_color";
+const GTK_ACCENT_FG: &str = "accent_fg_color";
+const GTK_DESTRUCTIVE_BG: &str = "destructive_bg_color";
+
+/// `@define-color` for every named colour `theme = "gtk"` uses, with the
+/// built-in palette's values. Installed at the lowest priority, so the GTK
+/// theme and `~/.config/gtk-4.0/gtk.css` override each one they define.
+pub fn fallback_css(dark: bool) -> String {
+    let p = palette(dark);
+    [
+        (GTK_WINDOW_BG, p.base),
+        (GTK_WINDOW_FG, p.text),
+        (GTK_CARD_BG, p.surface),
+        (GTK_POPOVER_BG, p.base),
+        (GTK_ACCENT_BG, p.accent),
+        (GTK_ACCENT_FG, p.accent_text),
+        (GTK_DESTRUCTIVE_BG, p.danger),
+    ]
+    .iter()
+    .map(|(name, c)| format!("@define-color {name} {};\n", c.css(1.0)))
+    .collect()
 }
 
 struct Palette {
@@ -127,7 +195,7 @@ pub fn resolve_dark(mode: ThemeMode) -> bool {
     match mode {
         ThemeMode::Dark => true,
         ThemeMode::Light => false,
-        ThemeMode::System => {
+        ThemeMode::System | ThemeMode::Gtk => {
             let Some(s) = gtk::Settings::default() else { return true };
             if has_color_scheme(&s) {
                 if let Some(dark) = read_color_scheme(&s) {
@@ -189,24 +257,55 @@ mod font_tests {
 pub fn generate_css(config: &Config, dark: bool) -> String {
     let a: &Appearance = &config.appearance;
     let p = palette(dark);
+    let gtk_colors = a.theme == ThemeMode::Gtk;
+    // A colour from the config, else the GTK named colour (theme = "gtk"),
+    // else the built-in palette.
+    let pick = |user: Option<&str>, named: &'static str, builtin: Color| match Color::parse(user) {
+        Some(c) => Paint::Rgba(c),
+        None if gtk_colors => Paint::Named(named, 1.0),
+        None => Paint::Rgba(builtin),
+    };
 
-    let bg = Color::parse(a.background.as_deref()).unwrap_or(p.base);
-    let fg = Color::parse(a.foreground.as_deref()).unwrap_or(p.text);
-    let accent = Color::parse(a.accent.as_deref()).unwrap_or(p.accent);
-    let border = Color::parse(a.border_color.as_deref()).unwrap_or(p.border);
-    let sub = Color { a: 0.75, ..fg };
-    let sub = if a.foreground.is_some() { sub } else { p.subtext };
+    let bg = pick(a.background.as_deref(), GTK_WINDOW_BG, p.base);
+    let fg = pick(a.foreground.as_deref(), GTK_WINDOW_FG, p.text);
+    let accent = pick(a.accent.as_deref(), GTK_ACCENT_BG, p.accent);
+    let border = match Color::parse(a.border_color.as_deref()) {
+        Some(c) => Paint::Rgba(c),
+        // GTK themes have no standard border colour: derive it from the text.
+        None if gtk_colors => fg.with_alpha(0.15),
+        None => Paint::Rgba(p.border),
+    };
+    let sub = if a.foreground.is_some() {
+        fg.with_alpha(0.75)
+    } else if gtk_colors {
+        fg.with_alpha(0.7)
+    } else {
+        Paint::Rgba(p.subtext)
+    };
     let selection = Color::parse(a.selection.as_deref());
     let sel_css = selection.map_or_else(|| accent.css(if dark { 0.22 } else { 0.16 }), |c| c.css(1.0));
     let hover_css = fg.css(0.07);
     let surface_css = if a.background.is_some() {
         // Derive the "raised" colour from the user's background.
         fg.css(if dark { 0.09 } else { 0.06 })
+    } else if gtk_colors {
+        Paint::Named(GTK_CARD_BG, 1.0).css(1.0)
     } else {
         p.surface.css(1.0)
     };
     // Popovers must be opaque to stay readable over any wallpaper.
-    let popover_bg = Color { a: 1.0, ..bg }.css(1.0);
+    let popover_bg = if gtk_colors && a.background.is_none() {
+        Paint::Named(GTK_POPOVER_BG, 1.0)
+    } else {
+        bg.with_alpha(1.0)
+    }
+    .css(1.0);
+    let accent_text = if gtk_colors && a.accent.is_none() {
+        Paint::Named(GTK_ACCENT_FG, 1.0)
+    } else {
+        Paint::Rgba(p.accent_text)
+    };
+    let danger_paint = if gtk_colors { Paint::Named(GTK_DESTRUCTIVE_BG, 1.0) } else { Paint::Rgba(p.danger) };
     let opacity = a.opacity as f32;
 
     let radius = a.border_radius;
@@ -215,8 +314,8 @@ pub fn generate_css(config: &Config, dark: bool) -> String {
     let animated = a.animations;
     let tr = |props: &str| if animated { format!("transition: {props};") } else { String::new() };
     let icon = a.icon_size;
-    let danger = p.danger.css(1.0);
-    let danger_bg = p.danger.css(0.16);
+    let danger = danger_paint.css(1.0);
+    let danger_bg = danger_paint.css(0.16);
     let shadow = p.shade.css(0.35);
 
     format!(
@@ -273,6 +372,7 @@ window.arch-launcher.toplevel {{ box-shadow: none; }}
   margin: 1px 0;
   border-radius: {inner}px;
   background-color: transparent;
+  color: {fg};
   box-shadow: none;
   outline: none;
   {tr_row}
@@ -360,7 +460,7 @@ popover.arch-launcher separator, .arch-launcher popover separator {{ background-
         inner = inner_radius,
         surface = surface_css,
         accent = accent.css(1.0),
-        accent_text = p.accent_text.css(1.0),
+        accent_text = accent_text.css(1.0),
         sel = sel_css,
         hover = hover_css,
         badge_bg = accent.css(0.16),
@@ -378,6 +478,7 @@ popover.arch-launcher separator, .arch-launcher popover separator {{ background-
 /// Owns the CSS providers installed on the default display.
 #[derive(Default)]
 pub struct ThemeManager {
+    fallback: RefCell<Option<gtk::CssProvider>>,
     app: RefCell<Option<gtk::CssProvider>>,
     user: RefCell<Option<gtk::CssProvider>>,
 }
@@ -406,12 +507,23 @@ impl ThemeManager {
         match (config.appearance.theme, modern) {
             (ThemeMode::Dark, true) => set_color_scheme(&settings, "dark"),
             (ThemeMode::Light, true) => set_color_scheme(&settings, "light"),
-            (ThemeMode::System, true) => set_color_scheme(&settings, "default"),
+            (ThemeMode::System | ThemeMode::Gtk, true) => set_color_scheme(&settings, "default"),
             (ThemeMode::Dark, false) => settings.set_gtk_application_prefer_dark_theme(true),
             (ThemeMode::Light, false) => settings.set_gtk_application_prefer_dark_theme(false),
-            (ThemeMode::System, false) => {}
+            (ThemeMode::System | ThemeMode::Gtk, false) => {}
         }
         let dark = resolve_dark(config.appearance.theme);
+
+        if let Some(old) = self.fallback.borrow_mut().take() {
+            gtk::style_context_remove_provider_for_display(&display, &old);
+        }
+        if config.appearance.theme == ThemeMode::Gtk {
+            let fallback = gtk::CssProvider::new();
+            log_parsing_errors(&fallback, "theme fallback");
+            fallback.load_from_string(&fallback_css(dark));
+            gtk::style_context_add_provider_for_display(&display, &fallback, gtk::STYLE_PROVIDER_PRIORITY_FALLBACK);
+            *self.fallback.borrow_mut() = Some(fallback);
+        }
 
         if let Some(old) = self.app.borrow_mut().take() {
             gtk::style_context_remove_provider_for_display(&display, &old);
@@ -439,5 +551,52 @@ impl ThemeManager {
             Err(e) => log::warn!("cannot read {}: {e}", user_css.display()),
         }
         dark
+    }
+}
+
+#[cfg(test)]
+mod gtk_color_tests {
+    use super::{fallback_css, generate_css};
+    use crate::config::{Config, ThemeMode};
+
+    #[test]
+    fn builtin_themes_use_literal_colours() {
+        let css = generate_css(&Config::default(), true);
+        assert!(!css.contains("@window_bg_color"), "{css}");
+        assert!(css.contains("rgba(203, 166, 247"), "Mocha accent expected");
+    }
+
+    #[test]
+    fn gtk_theme_references_named_colours() {
+        let mut cfg = Config::default();
+        cfg.appearance.theme = ThemeMode::Gtk;
+        let css = generate_css(&cfg, true);
+        for name in ["window_fg_color", "card_bg_color", "popover_bg_color", "accent_bg_color", "accent_fg_color"] {
+            assert!(css.contains(&format!("@{name}")), "missing @{name}");
+        }
+        assert!(css.contains("alpha(@window_bg_color, 0.940)"), "card keeps the configured opacity");
+        assert!(!css.contains("rgba(203, 166, 247"), "no built-in accent in gtk mode");
+    }
+
+    #[test]
+    fn config_colours_still_win_in_gtk_mode() {
+        let mut cfg = Config::default();
+        cfg.appearance.theme = ThemeMode::Gtk;
+        cfg.appearance.accent = Some("#ff0000".into());
+        let css = generate_css(&cfg, true);
+        assert!(!css.contains("@accent_bg_color"), "{css}");
+        assert!(css.contains("rgba(255, 0, 0, 1.000)"));
+        assert!(css.contains("@window_fg_color"), "other colours still follow GTK");
+    }
+
+    #[test]
+    fn fallback_defines_every_name() {
+        let css = fallback_css(true);
+        for name in [
+            "window_bg_color", "window_fg_color", "card_bg_color", "popover_bg_color",
+            "accent_bg_color", "accent_fg_color", "destructive_bg_color",
+        ] {
+            assert!(css.contains(&format!("@define-color {name} rgba(")), "missing {name}");
+        }
     }
 }
